@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     GameWindow gw;
-    gw.showMaximized();
+    gw.show();
 
     return app.exec();
 }

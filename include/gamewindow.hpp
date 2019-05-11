@@ -17,7 +17,12 @@ private:
         int width;
         int height;
         QPalette de;
+        void create_menu_bar();
+        int number_neighbors(int, int);
+        void update_states();
 private slots:
+        void next();
+        void reset();
         void button_press();
 };
 
