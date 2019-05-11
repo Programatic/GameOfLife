@@ -60,6 +60,12 @@ GameWindow::GameWindow()
         QSize sz(disp->width(), disp->height());
         this->setMinimumSize(sz);
         this->setMaximumSize(sz);
+
+        for (std::vector<std::vector<Cell*>>::iterator it = map.begin(), end = map.end(); it != end; ++it) {
+                for (std::vector<Cell*>::iterator i = (*it).begin(), e = (*it).end(); i != e; ++i) {
+                        (*i)->set_neighbors_states(get_neighbors(*i));
+                }
+        }
 }
 
 void GameWindow::button_press()
@@ -104,7 +110,7 @@ void GameWindow::next()
         updates = nchk;
 
         for (std::vector<Cell*>::iterator it = nchk.begin(), end = nchk.end(); it != end; ++it)  {
-                int n_alive = number_neighbors(*it); //NOTE: J is width and i is actually height
+                int n_alive = (*it)->neighbors_alive(); //NOTE: J is width and i is actually height
 
                 if (n_alive == 0 || n_alive == 1) {
                         (*it)->set_next_state(false);
@@ -134,17 +140,6 @@ void GameWindow::update_states()
         for (std::vector<Cell*>::iterator it = updates.begin(), end = updates.end(); it != end; ++it) {
                 (*it)->load_next_state();
         }
-}
-
-int GameWindow::number_neighbors(Cell *b)
-{
-        std::vector<Cell*> n = get_neighbors(b);
-        int n_alive = 0;
-
-        for (std::vector<Cell*>::iterator it = n.begin(), end = n.end(); it != end; ++it) {
-                n_alive += (*it)->is_alive();
-        }
-        return n_alive;
 }
 
 std::vector<Cell*> GameWindow::get_neighbors(Cell *b)

@@ -1,5 +1,7 @@
 #include "../include/cell.hpp"
 
+#include <algorithm>
+
 bool Cell::is_alive()
 {
         return alive;
@@ -8,6 +10,23 @@ bool Cell::is_alive()
 void Cell::set_alive(bool s)
 {
         alive = s;
+}
+
+void Cell::set_neighbors_states(std::vector<Cell*> neighbors)
+{
+        for (std::vector<Cell*>::iterator it = neighbors.begin(), end = neighbors.end(); it != end; ++it) {
+                neighbors_states.push_back(&((*it)->alive));
+        }
+}
+
+int Cell::neighbors_alive()
+{
+        int n_alive = 0;
+
+        for (std::vector<bool*>::iterator it = neighbors_states.begin(), end = neighbors_states.end(); it != end; ++it) {
+                n_alive += **it;
+        }
+        return n_alive;
 }
 
 void Cell::set_palette(QPalette pale)

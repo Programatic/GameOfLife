@@ -3,6 +3,7 @@
 
 #include <QPushButton>
 #include <QPalette>
+#include <vector>
 
 class Cell : public QPushButton {
         Q_OBJECT
@@ -21,7 +22,10 @@ class Cell : public QPushButton {
         bool get_next_state();
         int get_i();
         int get_j();
+        void set_neighbors_states(std::vector<Cell*>);
+        int neighbors_alive();
     private:
+        std::vector<bool*> neighbors_states;
         int i;
         int j;
         void update_button();

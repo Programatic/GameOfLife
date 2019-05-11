@@ -21,7 +21,6 @@ private:
         int height;
         QPalette de;
         void create_menu_bar();
-        int number_neighbors(Cell*);
         void update_states();
         void remove_element_from_alive(Cell*);
         void add_element_to_alive(Cell*);
