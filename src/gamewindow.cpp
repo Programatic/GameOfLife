@@ -13,6 +13,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QShortcut>
+#include <algorithm>
 
 GameWindow::GameWindow()
 {
@@ -39,6 +40,7 @@ GameWindow::GameWindow()
                 std::vector<Cell*> v;
                 for (int j = 0; j < height; j++) {
                         Cell *b = new Cell("", disp);
+                        b->set_coordinates(i, j);
                         b->setStyleSheet("border-radius: 0px;");
                         b->setFixedSize(size);
                         b->set_palette(b->palette());
@@ -63,94 +65,150 @@ GameWindow::GameWindow()
 void GameWindow::button_press()
 {
         Cell *b = qobject_cast<Cell*>(sender());
-        b->toggle_alive();
+        if (b->is_alive()) {
+                b->set_state(false);
+                remove_element_from_alive(b);
+        } else {
+                b->set_state(true);
+                add_element_to_alive(b);
+        }
+}
+
+void GameWindow::remove_element_from_alive(Cell* b)
+{
+        std::vector<Cell*>::iterator position = std::find(curr_alive.begin(), curr_alive.end(), b);
+        if (position != curr_alive.end()) // == myVector.end() means the element was not found
+                curr_alive.erase(position);
+}
+
+void GameWindow::add_element_to_alive(Cell *b)
+{
+        if (!(std::find(curr_alive.begin(), curr_alive.end(), b) != curr_alive.end())) {
+                curr_alive.push_back(b);
+        }
 }
 
 void GameWindow::next()
 {
-        for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                        int n_alive = number_neighbors(i,j); //NOTE: J is width and i is actually height
-
-                        if (n_alive == 0 || n_alive == 1)
-                                map[i][j]->set_next_state(false);
-                        if (n_alive >= 4)
-                                map[i][j]->set_next_state(false);
-                        if (n_alive == 3)
-                                map[i][j]->set_next_state(true);
-                        if (n_alive == 2 && map[i][j]->is_alive())
-                                map[i][j]->set_next_state(true);
+        //dump_vec(curr_alive);
+        std::vector<Cell*> nchk(curr_alive);
+        for(std::vector<Cell*>::iterator it = curr_alive.begin(), end = curr_alive.end(); it != end; ++it) {
+                std::vector<Cell*> neigh = get_neighbors(*it);
+                for (std::vector<Cell*>::iterator i = neigh.begin(), end = neigh.end(); i != end; ++i) {
+                        nchk.push_back(*i);
                 }
         }
+        sort(nchk.begin(), nchk.end());
+        nchk.erase(unique(nchk.begin(), nchk.end()), nchk.end());
+
+        updates = nchk;
+
+        for (std::vector<Cell*>::iterator it = nchk.begin(), end = nchk.end(); it != end; ++it)  {
+                int n_alive = number_neighbors(*it); //NOTE: J is width and i is actually height
+
+                if (n_alive == 0 || n_alive == 1) {
+                        (*it)->set_next_state(false);
+                        remove_element_from_alive(*it);
+                }
+                if (n_alive >= 4) {
+                        (*it)->set_next_state(false);
+                        remove_element_from_alive(*it);
+                }
+                if (n_alive == 3) {
+                        (*it)->set_next_state(true);
+                        add_element_to_alive(*it);
+                }
+                if (n_alive == 2 && (*it)->is_alive()) {
+                        (*it)->set_next_state(true);
+                        add_element_to_alive(*it);
+                }
+
+                //std::cout << (*it)->get_i() << " " << (*it)->get_j() << " " << n_alive << "\n";
+        }
+              
         update_states();
 }
 
 void GameWindow::update_states()
 {
-        for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                        map[i][j]->load_next_state();
-                }
+        for (std::vector<Cell*>::iterator it = updates.begin(), end = updates.end(); it != end; ++it) {
+                (*it)->load_next_state();
         }
 }
 
-int GameWindow::number_neighbors(int i, int j)
+int GameWindow::number_neighbors(Cell *b)
 {
+        std::vector<Cell*> n = get_neighbors(b);
         int n_alive = 0;
+
+        for (std::vector<Cell*>::iterator it = n.begin(), end = n.end(); it != end; ++it) {
+                n_alive += (*it)->is_alive();
+        }
+        return n_alive;
+}
+
+std::vector<Cell*> GameWindow::get_neighbors(Cell *b)
+{
+        int i = b->get_i();
+        int j = b->get_j();
+
+        std::vector<Cell*> n;
+
         if (i == 0 && j == 0) {
-                        n_alive += map[i + 1][j]->is_alive() +
-                                map[i+1][j+1]->is_alive() +
-                                map[i][j+1]->is_alive();
+                        n.push_back(map[i + 1][j]);
+                        n.push_back(map[i+1][j+1]);
+                        n.push_back(map[i][j+1]);
                 } else if (i == width - 1 && j == height - 1) {
-                        n_alive += map[i-1][j]->is_alive() +
-                                map[i-1][j-1]->is_alive() +
-                                map[i][j-1]->is_alive();
+                        n.push_back(map[i-1][j]);
+                        n.push_back(map[i-1][j-1]);
+                        n.push_back(map[i][j-1]);
                 } else if (i == width - 1 && j == 0) {
-                        n_alive += map[i-1][j]->is_alive() +
-                                map[i-1][j+1]->is_alive() +
-                                map[i][j+1]->is_alive();
+                        n.push_back(map[i-1][j]);
+                        n.push_back(map[i-1][j+1]);
+                        n.push_back(map[i][j+1]);
                 } else if (i == 0 && j == height - 1) {
-                        n_alive += map[i][j-1]->is_alive() +
-                                map[i+1][j-1]->is_alive() +
-                                map[i+1][j]->is_alive();
+                        n.push_back(map[i][j-1]);
+                        n.push_back(map[i+1][j-1]);
+                        n.push_back(map[i+1][j]);
                 } else {
                         if (i == 0) {
-                                n_alive += map[i+1][j]->is_alive() +
-                                        map[i+1][j+1]->is_alive() +
-                                        map[i+1][j-1]->is_alive() +
-                                        map[i][j-1]->is_alive() +
-                                        map[i][j+1]->is_alive();
+                                n.push_back(map[i+1][j]);
+                                n.push_back(map[i+1][j+1]);
+                                n.push_back(map[i+1][j-1]);
+                                n.push_back(map[i][j-1]);
+                                n.push_back(map[i][j+1]);
                         } else if (i == width - 1) {
-                                n_alive += map[i-1][j]->is_alive() +
-                                        map[i-1][j+1]->is_alive() +
-                                        map[i-1][j-1]->is_alive() +
-                                        map[i][j-1]->is_alive() +
-                                        map[i][j+1]->is_alive();
+                                n.push_back(map[i-1][j]);
+                                n.push_back(map[i-1][j+1]);
+                                n.push_back(map[i-1][j-1]);
+                                n.push_back(map[i][j-1]);
+                                n.push_back(map[i][j+1]);
                         } else if (j == height - 1) {
-                                n_alive += map[i][j-1]->is_alive() +
-                                        map[i-1][j-1]->is_alive() +
-                                        map[i+1][j-1]->is_alive() +
-                                        map[i+1][j]->is_alive() +
-                                        map[i-1][j]->is_alive();
+                                n.push_back(map[i][j-1]);
+                                n.push_back(map[i-1][j-1]);
+                                n.push_back(map[i+1][j-1]);
+                                n.push_back(map[i+1][j]);
+                                n.push_back(map[i-1][j]);
                         } else if (j == 0) {
-                                n_alive += map[i][j+1]->is_alive() +
-                                        map[i-1][j+1]->is_alive() +
-                                        map[i+1][j+1]->is_alive() +
-                                        map[i+1][j]->is_alive() +
-                                        map[i-1][j]->is_alive();
+                                n.push_back(map[i][j+1]);
+                                n.push_back(map[i-1][j+1]);
+                                n.push_back(map[i+1][j+1]);
+                                n.push_back(map[i+1][j]);
+                                n.push_back(map[i-1][j]);
                         } else {
-                                n_alive += map[i][j-1]->is_alive() +
-                                        map[i-1][j-1]->is_alive() +
-                                        map[i+1][j-1]->is_alive() +
-                                        map[i+1][j]->is_alive() +
-                                        map[i-1][j]->is_alive() +
-                                        map[i][j+1]->is_alive() +
-                                        map[i-1][j+1]->is_alive() +
-                                        map[i+1][j+1]->is_alive();
+                                n.push_back(map[i][j-1]);
+                                n.push_back(map[i-1][j-1]);
+                                n.push_back(map[i+1][j-1]);
+                                n.push_back(map[i+1][j]);
+                                n.push_back(map[i-1][j]);
+                                n.push_back(map[i][j+1]);
+                                n.push_back(map[i-1][j+1]);
+                                n.push_back(map[i+1][j+1]);
                         }
-                       
+
                 }
-        return n_alive;
+
+        return n;
 }
 
 void GameWindow::create_menu_bar()
@@ -168,7 +226,14 @@ void GameWindow::create_menu_bar()
 
 void GameWindow::reset()
 {
-        for (int i = 0; i < width; i++)
-                for (int j = 0; j < height; j++)
-                        map[i][j]->reset();
+        for (std::vector<Cell*>::iterator it = curr_alive.begin(), end = curr_alive.end(); it != end; ++it) {
+                (*it)->reset();
+        }
+        curr_alive.clear();
+}
+
+void GameWindow::dump_vec(std::vector<Cell*> v)
+{
+        for (std::vector<Cell*>::iterator it = v.begin(), end = v.end(); it != end; ++it)
+                std::cout << (*it)->get_i() << " " << (*it)->get_j() << " " << (*it)->is_alive() << "\n";
 }

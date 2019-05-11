@@ -9,15 +9,21 @@ class Cell : public QPushButton {
 
     public:
         using QPushButton::QPushButton;
+
         bool is_alive();
         void set_alive(bool);
-        void toggle_alive();
         void set_palette(QPalette);
         void set_next_state(bool);
         void set_state(bool);
         void load_next_state();
         void reset();
+        void set_coordinates(int, int);
+        bool get_next_state();
+        int get_i();
+        int get_j();
     private:
+        int i;
+        int j;
         void update_button();
         bool alive_next = false;
         bool alive = false;
